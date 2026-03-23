@@ -1,0 +1,12 @@
+node_modules
+dist
+playwright-report
+test-results
+.DS_Store
+storage/screenshots/*
+storage/videos/*
+storage/state/*
+!storage/screenshots/.gitkeep
+!storage/videos/.gitkeep
+!storage/state/.gitkeep
+!storage/state/douyin-auth.json

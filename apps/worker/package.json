@@ -1,0 +1,18 @@
+{
+  "name": "@social-publisher/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "node --watch --enable-source-maps ./dist/index.js",
+    "start": "node --enable-source-maps ./dist/index.js"
+  },
+  "dependencies": {
+    "@social-publisher/core": "0.1.0",
+    "@social-publisher/platform-douyin": "0.1.0",
+    "@social-publisher/shared": "0.1.0"
+  }
+}

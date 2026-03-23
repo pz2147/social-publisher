@@ -1,0 +1,21 @@
+{
+  "name": "social-publisher",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Multi-platform social media publisher built with TypeScript and Playwright.",
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "check": "tsc -b tsconfig.json",
+    "dev:worker": "npm run dev --workspace @social-publisher/worker",
+    "start": "npm run start --workspace @social-publisher/worker"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "typescript": "^5.8.2"
+  }
+}
