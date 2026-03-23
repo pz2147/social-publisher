@@ -1,0 +1,16 @@
+{
+  "name": "@social-publisher/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "node --watch --enable-source-maps ./dist/server.js",
+    "start": "node --enable-source-maps ./dist/server.js"
+  },
+  "dependencies": {
+    "@social-publisher/worker": "0.1.0"
+  }
+}

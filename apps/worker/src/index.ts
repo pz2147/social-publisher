@@ -1,36 +1,23 @@
-import { InMemoryCheckpointStore, createCheckpointLogger } from "@social-publisher/core";
-import { DouyinAdapter } from "@social-publisher/platform-douyin";
-import type { PublishTask } from "@social-publisher/shared";
+import {
+  resolveDefaultExecutablePath,
+  resolveDefaultStorageStatePath,
+  runPublishTask
+} from "./lib.js";
 
 async function main() {
-  const task: PublishTask = {
-    id: "demo-task-1",
-    platform: "douyin",
-    accountId: "local-account",
-    videoPath: "./storage/videos/demo.mp4",
-    input: {
-      title: "Playwright 上传流程演示"
-    },
-    status: "queued",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  const checkpoints = new InMemoryCheckpointStore();
-  const checkpoint = createCheckpointLogger(checkpoints, task);
-
-  const adapter = new DouyinAdapter({
-    storageStatePath: "./storage/state/douyin-auth.json",
+  const output = await runPublishTask({
+    platform:
+      (process.env.PUBLISH_PLATFORM as "douyin" | "wechat_channels" | "xiaohongshu" | "youtube" | undefined) ??
+      "douyin",
+    videoPath: process.env.PUBLISH_VIDEO_PATH ?? "",
+    title: process.env.PUBLISH_TITLE,
+    storageStatePath: process.env.DOUYIN_STORAGE_STATE_PATH ?? resolveDefaultStorageStatePath(),
+    executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH ?? resolveDefaultExecutablePath(),
     headless: false
   });
 
-  const result = await adapter.run({
-    task,
-    checkpoint
-  });
-
-  console.log("publish result", result.status);
-  console.table(checkpoints.list());
+  console.log("publish result", output.result.status);
+  console.table(output.checkpoints);
 }
 
 main().catch((error) => {

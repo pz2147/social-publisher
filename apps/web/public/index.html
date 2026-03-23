@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Social Publisher Console</title>
+    <style>
+      :root {
+        --bg: #f4efe6;
+        --panel: rgba(255, 252, 247, 0.88);
+        --ink: #1f1d1a;
+        --muted: #6b6458;
+        --accent: #c44536;
+        --accent-soft: #f3d4c8;
+        --line: rgba(31, 29, 26, 0.12);
+        --success: #1a7f52;
+        --error: #a12b2b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Avenir Next", "PingFang SC", "Noto Sans SC", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(196, 69, 54, 0.18), transparent 28%),
+          radial-gradient(circle at right 20%, rgba(72, 118, 255, 0.1), transparent 24%),
+          linear-gradient(135deg, #f5ecdf 0%, #efe6d6 100%);
+        min-height: 100vh;
+      }
+
+      .shell {
+        width: min(1080px, calc(100% - 32px));
+        margin: 32px auto;
+        padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 20px 60px rgba(86, 63, 41, 0.12);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+      }
+
+      .subtitle {
+        margin: 12px 0 0;
+        color: var(--muted);
+        max-width: 720px;
+        font-size: 15px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 20px;
+        margin-top: 28px;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 20px;
+      }
+
+      .card {
+        padding: 20px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(31, 29, 26, 0.08);
+      }
+
+      .sidebar {
+        display: grid;
+        gap: 12px;
+        align-content: start;
+      }
+
+      .channel-button {
+        width: 100%;
+        text-align: left;
+        border: 1px solid rgba(31, 29, 26, 0.08);
+        border-radius: 18px;
+        padding: 14px 16px;
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .channel-button.active {
+        background: linear-gradient(135deg, #c44536, #da7a31);
+        color: white;
+        box-shadow: 0 12px 24px rgba(196, 69, 54, 0.18);
+      }
+
+      .channel-button small {
+        display: block;
+        margin-top: 4px;
+        opacity: 0.78;
+      }
+
+      .card h2 {
+        margin: 0 0 16px;
+        font-size: 18px;
+      }
+
+      form {
+        display: grid;
+        gap: 14px;
+      }
+
+      .form-section {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.62);
+      }
+
+      .form-section h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .section-hint {
+        margin: -6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .toggle-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .toggle {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.84);
+        color: var(--ink);
+      }
+
+      .toggle input {
+        width: auto;
+        margin: 0;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px 14px;
+        font: inherit;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.92);
+      }
+
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 14px 18px;
+        font: inherit;
+        font-weight: 700;
+        color: white;
+        background: linear-gradient(135deg, #c44536, #da7a31);
+        cursor: pointer;
+      }
+
+      button[disabled] {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .meta {
+        display: grid;
+        gap: 12px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .status {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: var(--accent-soft);
+        color: var(--ink);
+        font-size: 14px;
+      }
+
+      .status.error {
+        background: rgba(161, 43, 43, 0.12);
+        color: var(--error);
+      }
+
+      .status.success {
+        background: rgba(26, 127, 82, 0.12);
+        color: var(--success);
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .checkpoints {
+        display: grid;
+        gap: 10px;
+      }
+
+      .checkpoint {
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .checkpoint strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+      }
+
+      .session-card {
+        margin-top: 20px;
+      }
+
+      .session-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .session-metric {
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .session-metric strong {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .cookie-list {
+        margin-top: 14px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .cookie-item {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.68);
+        border: 1px solid var(--line);
+        font-size: 12px;
+      }
+
+      .verify-row {
+        margin-top: 14px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      @media (max-width: 860px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .two-col,
+        .toggle-grid,
+        .session-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <h1>Social Publisher</h1>
+      <p class="subtitle">
+        本地上传控制台。先填好视频和标题，点击启动后，Playwright 会打开抖音上传页并执行到人工确认发布前。
+      </p>
+
+      <section class="grid">
+        <aside class="card sidebar">
+          <h2>发布渠道</h2>
+          <button class="channel-button active" type="button" data-platform="douyin">
+            抖音
+            <small>当前可用</small>
+          </button>
+          <button class="channel-button" type="button" data-platform="wechat_channels">
+            微信
+            <small>即将支持</small>
+          </button>
+          <button class="channel-button" type="button" data-platform="xiaohongshu">
+            小红书
+            <small>即将支持</small>
+          </button>
+          <button class="channel-button" type="button" data-platform="youtube">
+            YouTube
+            <small>即将支持</small>
+          </button>
+        </aside>
+
+        <div class="workspace">
+          <div class="card">
+            <h2 id="formTitle">上传任务 · 抖音</h2>
+            <form id="run-form">
+              <input id="platform" name="platform" type="hidden" value="douyin" />
+              <div class="form-section">
+                <h3>内容</h3>
+                <div class="section-hint">尽量按抖音发布页习惯填写，标题、描述、话题和 @ 单独拆开。</div>
+                <label>
+                  视频路径
+                  <input id="videoPath" name="videoPath" placeholder="/Users/you/Desktop/video.mp4" required />
+                </label>
+                <label>
+                  标题
+                  <input id="title" name="title" maxlength="55" placeholder="输入标题，建议简短有力" />
+                </label>
+                <label>
+                  描述
+                  <textarea id="description" name="description" placeholder="补充剧情、卖点、CTA"></textarea>
+                </label>
+                <div class="two-col">
+                  <label>
+                    话题标签
+                    <input id="tags" name="tags" placeholder="AI, 机器人, Figure03" />
+                  </label>
+                  <label>
+                    @账号
+                    <input id="mentions" name="mentions" placeholder="@friend, @brand" />
+                  </label>
+                </div>
+                <div class="two-col">
+                  <label>
+                    位置
+                    <input id="location" name="location" placeholder="上海 / 北京 / 留空" />
+                  </label>
+                  <label>
+                    定时发布时间
+                    <input id="scheduledAt" name="scheduledAt" type="datetime-local" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <h3>发布设置</h3>
+                <div class="two-col">
+                  <label>
+                    可见范围
+                    <select id="visibility" name="visibility">
+                      <option value="public">公开</option>
+                      <option value="friends">好友可见</option>
+                      <option value="private">仅自己可见</option>
+                    </select>
+                  </label>
+                  <label>
+                    封面方式
+                    <select id="coverMode" name="coverMode">
+                      <option value="auto">自动选封面</option>
+                      <option value="custom">人工调整封面</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <h3>互动权限</h3>
+                <div class="toggle-grid">
+                  <label class="toggle"><input id="allowComments" type="checkbox" checked /> 允许评论</label>
+                  <label class="toggle"><input id="allowDuet" type="checkbox" checked /> 允许合拍</label>
+                  <label class="toggle"><input id="allowStitch" type="checkbox" checked /> 允许共创/拼接</label>
+                  <label class="toggle"><input id="allowDownload" type="checkbox" /> 允许下载</label>
+                  <label class="toggle"><input id="declareOriginal" type="checkbox" /> 声明原创</label>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <h3>运行环境</h3>
+                <label>
+                  浏览器路径
+                  <input id="executablePath" name="executablePath" />
+                </label>
+                <label>
+                  登录态路径
+                  <input id="storageStatePath" name="storageStatePath" />
+                </label>
+              </div>
+              <div class="actions">
+                <button id="loginButton" type="button">登录抖音</button>
+                <button id="saveLoginButton" type="button">我已登录，保存状态</button>
+                <button id="saveUploadSessionButton" type="button">保存当前上传窗口状态</button>
+                <button id="submitButton" type="submit">启动上传流程</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>运行状态</h2>
+            <div class="meta">
+              <div id="status" class="status">等待输入任务参数。</div>
+              <pre id="summary">尚未执行。</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top: 20px;">
+        <h2>执行检查点</h2>
+        <div id="checkpoints" class="checkpoints">
+          <div class="checkpoint">运行后会在这里展示每一步的执行记录。</div>
+        </div>
+      </section>
+
+      <section class="card session-card">
+        <h2>登录态检查</h2>
+        <div id="sessionSummary" class="status">正在检查 cookie 状态。</div>
+        <div class="verify-row">
+          <button id="verifyLoginButton" type="button">检查是否仍然登录</button>
+          <div id="loginVerification" class="status">等待登录状态校验。</div>
+        </div>
+        <div id="sessionGrid" class="session-grid" style="margin-top: 14px;"></div>
+        <div id="cookieList" class="cookie-list"></div>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById("run-form");
+      const statusNode = document.getElementById("status");
+      const summaryNode = document.getElementById("summary");
+      const checkpointsNode = document.getElementById("checkpoints");
+      const submitButton = document.getElementById("submitButton");
+      const loginButton = document.getElementById("loginButton");
+      const saveLoginButton = document.getElementById("saveLoginButton");
+      const saveUploadSessionButton = document.getElementById("saveUploadSessionButton");
+      const formTitle = document.getElementById("formTitle");
+      const platformInput = document.getElementById("platform");
+      const titleInput = document.getElementById("title");
+      const descriptionInput = document.getElementById("description");
+      const tagsInput = document.getElementById("tags");
+      const mentionsInput = document.getElementById("mentions");
+      const locationInput = document.getElementById("location");
+      const scheduledAtInput = document.getElementById("scheduledAt");
+      const visibilityInput = document.getElementById("visibility");
+      const coverModeInput = document.getElementById("coverMode");
+      const allowCommentsInput = document.getElementById("allowComments");
+      const allowDuetInput = document.getElementById("allowDuet");
+      const allowStitchInput = document.getElementById("allowStitch");
+      const allowDownloadInput = document.getElementById("allowDownload");
+      const declareOriginalInput = document.getElementById("declareOriginal");
+      const executablePathInput = document.getElementById("executablePath");
+      const storageStatePathInput = document.getElementById("storageStatePath");
+      const channelButtons = Array.from(document.querySelectorAll(".channel-button"));
+      const sessionSummaryNode = document.getElementById("sessionSummary");
+      const sessionGridNode = document.getElementById("sessionGrid");
+      const cookieListNode = document.getElementById("cookieList");
+      const verifyLoginButton = document.getElementById("verifyLoginButton");
+      const loginVerificationNode = document.getElementById("loginVerification");
+
+      const platformLabels = {
+        douyin: "抖音",
+        wechat_channels: "微信",
+        xiaohongshu: "小红书",
+        youtube: "YouTube"
+      };
+      let loginSessionId = null;
+      let reviewSessionId = null;
+
+      function setActivePlatform(platform) {
+        platformInput.value = platform;
+        formTitle.textContent = `上传任务 · ${platformLabels[platform] || platform}`;
+        channelButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.platform === platform);
+        });
+      }
+
+      async function loadDefaults() {
+        const response = await fetch("/api/defaults");
+        const data = await response.json();
+        executablePathInput.value = data.executablePath;
+        storageStatePathInput.value = data.storageStatePath;
+        const platformMeta = (data.platforms || [])
+          .map((platform) => `${platform.label}: ${platform.status === "available" ? "可用" : "即将支持"}`)
+          .join("\n");
+        summaryNode.textContent = `当前渠道支持情况：\n${platformMeta}`;
+        renderSession(data.session);
+      }
+
+      function renderSession(session) {
+        if (!session || !session.exists) {
+          sessionSummaryNode.className = "status error";
+          sessionSummaryNode.textContent = "未找到登录态文件";
+          sessionGridNode.innerHTML = "";
+          cookieListNode.innerHTML = "";
+          return;
+        }
+
+        sessionSummaryNode.className = "status success";
+        sessionSummaryNode.textContent = `已检测到登录态文件，共 ${session.cookieCount} 个 cookie，当前有效 ${session.activeCookieCount} 个。自动每 5 秒刷新一次。`;
+
+        sessionGridNode.innerHTML = [
+          ["文件路径", session.filePath],
+          ["文件大小", `${session.fileSizeBytes} bytes`],
+          ["会话 cookie", `${session.sessionCookieCount}`],
+          ["最早过期", session.soonestExpiryAt ? `${session.soonestExpiryAt}\n剩余 ${session.soonestExpiryInText}` : "无"],
+          ["最晚过期", session.latestExpiryAt ? `${session.latestExpiryAt}\n剩余 ${session.latestExpiryInText}` : "无"],
+          ["关键 cookie", session.keyCookies && session.keyCookies.length ? session.keyCookies.join(", ") : "未识别到"]
+        ]
+          .map(
+            ([label, value]) => `
+              <div class="session-metric">
+                <strong>${label}</strong>
+                <div>${value}</div>
+              </div>
+            `
+          )
+          .join("");
+
+        cookieListNode.innerHTML = (session.cookies || [])
+          .map(
+            (cookie) => `
+              <div class="cookie-item">
+                <strong>${cookie.name}</strong>
+                <div>${cookie.domain}</div>
+                <div>${cookie.expiresAt ? `${cookie.expiresAt} · 剩余 ${cookie.expiresInText}` : `会话级 · ${cookie.expiresInText}`}</div>
+              </div>
+            `
+          )
+          .join("");
+      }
+
+      async function refreshSession() {
+        try {
+          const storageStatePath = storageStatePathInput.value.trim();
+          const response = await fetch(`/api/session?storageStatePath=${encodeURIComponent(storageStatePath)}`);
+          const data = await response.json();
+          renderSession(data);
+        } catch (error) {
+          sessionSummaryNode.className = "status error";
+          sessionSummaryNode.textContent = error.message || String(error);
+        }
+      }
+
+      async function verifyLoginStatus() {
+        verifyLoginButton.disabled = true;
+        loginVerificationNode.className = "status";
+        loginVerificationNode.textContent = "正在检查当前登录状态...";
+
+        try {
+          const storageStatePath = storageStatePathInput.value.trim();
+          const executablePath = executablePathInput.value.trim();
+          const response = await fetch(
+            `/api/login-status?storageStatePath=${encodeURIComponent(storageStatePath)}&executablePath=${encodeURIComponent(executablePath)}`
+          );
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "检查失败");
+          }
+
+          loginVerificationNode.className = data.isLoggedIn ? "status success" : "status error";
+          loginVerificationNode.textContent = data.isLoggedIn
+            ? `已登录 · ${data.reason}`
+            : `未登录 · ${data.reason}`;
+          summaryNode.textContent = `登录检查时间：${data.verifiedAt}\n当前页面：${data.currentUrl || "无"}\n页面标题：${data.pageTitle || "无"}\n结果：${data.reason}`;
+        } catch (error) {
+          loginVerificationNode.className = "status error";
+          loginVerificationNode.textContent = error.message || String(error);
+        } finally {
+          verifyLoginButton.disabled = false;
+        }
+      }
+
+      async function saveUploadSessionState() {
+        if (!reviewSessionId) {
+          statusNode.className = "status error";
+          statusNode.textContent = "没有可保存的上传窗口";
+          summaryNode.textContent = "请先启动上传流程。如果上传窗口里被踢回登录页，重新登录后再点击这个按钮。";
+          return;
+        }
+
+        saveUploadSessionButton.disabled = true;
+        statusNode.className = "status";
+        statusNode.textContent = "正在保存当前上传窗口状态";
+        summaryNode.textContent = "系统会从仍然打开的上传浏览器窗口里读取 cookie 并写回登录态文件。";
+
+        try {
+          const response = await fetch("/api/session/save", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({
+              sessionId: reviewSessionId,
+              storageStatePath: storageStatePathInput.value.trim()
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "保存上传窗口状态失败");
+          }
+
+          statusNode.className = "status success";
+          statusNode.textContent = "已保存当前上传窗口状态";
+          summaryNode.textContent = `已从上传窗口保存登录状态到：\n${data.storageStatePath}\n当前页面：${data.currentUrl}\nCookie 数量：${data.cookieCount}`;
+          await refreshSession();
+          await verifyLoginStatus();
+        } catch (error) {
+          statusNode.className = "status error";
+          statusNode.textContent = "保存上传窗口状态失败";
+          summaryNode.textContent = error.message || String(error);
+        } finally {
+          saveUploadSessionButton.disabled = false;
+        }
+      }
+
+      channelButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setActivePlatform(button.dataset.platform);
+        });
+      });
+
+      loginButton.addEventListener("click", async () => {
+        if (platformInput.value !== "douyin") {
+          statusNode.className = "status error";
+          statusNode.textContent = "当前只支持抖音登录";
+          summaryNode.textContent = "请先在左侧选择抖音，再点击登录。";
+          return;
+        }
+
+        loginButton.disabled = true;
+        submitButton.disabled = true;
+        saveLoginButton.disabled = true;
+        saveUploadSessionButton.disabled = true;
+        statusNode.className = "status";
+        statusNode.textContent = "浏览器即将打开，请在新窗口里扫码登录抖音。";
+        summaryNode.textContent = "浏览器打开后，请先完成扫码登录。登录成功并确认进入创作者中心或上传页后，再回来点击“我已登录，保存状态”。";
+
+        try {
+          const response = await fetch("/api/login", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({
+              executablePath: executablePathInput.value.trim()
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "登录失败");
+          }
+
+          loginSessionId = data.sessionId;
+          statusNode.className = "status success";
+          statusNode.textContent = "登录窗口已打开";
+          summaryNode.textContent = "请在打开的浏览器里完成抖音扫码登录，然后点击“我已登录，保存状态”。";
+          saveLoginButton.disabled = false;
+        } catch (error) {
+          statusNode.className = "status error";
+          statusNode.textContent = "登录失败";
+          summaryNode.textContent = error.message || String(error);
+        } finally {
+          loginButton.disabled = false;
+          submitButton.disabled = false;
+          saveUploadSessionButton.disabled = !reviewSessionId;
+        }
+      });
+
+      saveLoginButton.addEventListener("click", async () => {
+        if (!loginSessionId) {
+          statusNode.className = "status error";
+          statusNode.textContent = "还没有打开登录窗口";
+          summaryNode.textContent = "请先点击“登录抖音”，在浏览器中完成扫码后，再保存状态。";
+          return;
+        }
+
+        loginButton.disabled = true;
+        submitButton.disabled = true;
+        saveLoginButton.disabled = true;
+        statusNode.className = "status";
+        statusNode.textContent = "正在保存登录态";
+        summaryNode.textContent = "正在读取当前浏览器中的 cookie 和登录状态...";
+
+        try {
+          const response = await fetch("/api/login/complete", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({
+              sessionId: loginSessionId,
+              storageStatePath: storageStatePathInput.value.trim()
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "保存登录态失败");
+          }
+
+          loginSessionId = null;
+          statusNode.className = "status success";
+          statusNode.textContent = "抖音登录态已保存";
+          summaryNode.textContent = `已保存 cookie/登录状态到：\n${data.storageStatePath}\n\n当前页面：${data.currentUrl}\nCookie 数量：${data.cookieCount}`;
+          await refreshSession();
+          await verifyLoginStatus();
+        } catch (error) {
+          statusNode.className = "status error";
+          statusNode.textContent = "保存登录态失败";
+          summaryNode.textContent = error.message || String(error);
+          saveLoginButton.disabled = false;
+        } finally {
+          loginButton.disabled = false;
+          submitButton.disabled = false;
+        }
+      });
+
+      function renderCheckpoints(checkpoints) {
+        if (!checkpoints.length) {
+          checkpointsNode.innerHTML = '<div class="checkpoint">没有可显示的检查点。</div>';
+          return;
+        }
+
+        checkpointsNode.innerHTML = checkpoints
+          .map(
+            (checkpoint) => `
+              <div class="checkpoint">
+                <strong>${checkpoint.step}</strong>
+                <div>${checkpoint.message}</div>
+                <div style="margin-top: 6px; color: #6b6458; font-size: 12px;">${checkpoint.createdAt}</div>
+              </div>
+            `
+          )
+          .join("");
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        submitButton.disabled = true;
+        loginButton.disabled = true;
+        saveLoginButton.disabled = true;
+        saveUploadSessionButton.disabled = true;
+        statusNode.className = "status";
+        statusNode.textContent = "任务执行中，浏览器会在本机打开。";
+        summaryNode.textContent = "正在调用 Playwright...";
+        checkpointsNode.innerHTML = '<div class="checkpoint">任务开始执行，请稍候。</div>';
+
+        const payload = {
+          platform: platformInput.value,
+          videoPath: document.getElementById("videoPath").value.trim(),
+          title: titleInput.value.trim(),
+          description: descriptionInput.value.trim(),
+          tags: tagsInput.value
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          mentions: mentionsInput.value
+            .split(",")
+            .map((item) => item.trim().replace(/^@/, ""))
+            .filter(Boolean),
+          location: locationInput.value.trim(),
+          scheduledAt: scheduledAtInput.value || undefined,
+          visibility: visibilityInput.value,
+          coverMode: coverModeInput.value,
+          allowComments: allowCommentsInput.checked,
+          allowDuet: allowDuetInput.checked,
+          allowStitch: allowStitchInput.checked,
+          allowDownload: allowDownloadInput.checked,
+          declareOriginal: declareOriginalInput.checked,
+          executablePath: executablePathInput.value.trim(),
+          storageStatePath: storageStatePathInput.value.trim(),
+          headless: false
+        };
+
+        try {
+          const response = await fetch("/api/run", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "运行失败");
+          }
+
+          statusNode.className = "status success";
+          statusNode.textContent = `执行完成，当前状态：${data.result.status}`;
+          summaryNode.textContent = JSON.stringify(data.result, null, 2);
+          renderCheckpoints(data.checkpoints || []);
+          reviewSessionId = data.result.reviewSessionId || null;
+          saveUploadSessionButton.disabled = !reviewSessionId;
+          await refreshSession();
+        } catch (error) {
+          statusNode.className = "status error";
+          statusNode.textContent = "执行失败";
+          summaryNode.textContent = error.message || String(error);
+          checkpointsNode.innerHTML = '<div class="checkpoint">这次执行没有产生可用检查点。</div>';
+        } finally {
+          submitButton.disabled = false;
+          loginButton.disabled = false;
+          saveLoginButton.disabled = !loginSessionId;
+          saveUploadSessionButton.disabled = !reviewSessionId;
+        }
+      });
+
+      loadDefaults().catch((error) => {
+        statusNode.className = "status error";
+        statusNode.textContent = "默认配置加载失败";
+        summaryNode.textContent = error.message || String(error);
+      });
+
+      verifyLoginButton.addEventListener("click", () => {
+        verifyLoginStatus().catch(() => {});
+      });
+      saveUploadSessionButton.addEventListener("click", () => {
+        saveUploadSessionState().catch(() => {});
+      });
+
+      setActivePlatform("douyin");
+      saveLoginButton.disabled = true;
+      saveUploadSessionButton.disabled = true;
+      setInterval(() => {
+        refreshSession().catch(() => {});
+      }, 5000);
+      setTimeout(() => {
+        verifyLoginStatus().catch(() => {});
+      }, 400);
+    </script>
+  </body>
+  </html>

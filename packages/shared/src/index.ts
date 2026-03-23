@@ -11,7 +11,16 @@ export interface PublishInput {
   title: string;
   description?: string;
   tags?: string[];
+  mentions?: string[];
+  location?: string;
   scheduledAt?: string;
+  visibility?: "public" | "private" | "friends";
+  coverMode?: "auto" | "custom";
+  declareOriginal?: boolean;
+  allowComments?: boolean;
+  allowDuet?: boolean;
+  allowStitch?: boolean;
+  allowDownload?: boolean;
 }
 
 export interface PublishTask {

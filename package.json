@@ -11,7 +11,9 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "check": "tsc -b tsconfig.json",
+    "dev:web": "npm run dev --workspace @social-publisher/web",
     "dev:worker": "npm run dev --workspace @social-publisher/worker",
+    "start:web": "npm run start --workspace @social-publisher/web",
     "start": "npm run start --workspace @social-publisher/worker"
   },
   "devDependencies": {

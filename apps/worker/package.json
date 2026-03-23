@@ -5,6 +5,10 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./lib.js": "./dist/lib.js"
+  },
   "scripts": {
     "build": "tsc -b",
     "dev": "node --watch --enable-source-maps ./dist/index.js",

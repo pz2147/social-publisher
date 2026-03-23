@@ -3,6 +3,7 @@ import type { PublishTask, TaskCheckpoint } from "@social-publisher/shared";
 export interface PublishResult {
   status: PublishTask["status"];
   checkpoints: TaskCheckpoint[];
+  reviewSessionId?: string;
 }
 
 export interface PublishContext {

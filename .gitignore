@@ -1,12 +1,13 @@
 node_modules
 dist
+*.tsbuildinfo
 playwright-report
 test-results
 .DS_Store
+.local-browsers
 storage/screenshots/*
 storage/videos/*
 storage/state/*
 !storage/screenshots/.gitkeep
 !storage/videos/.gitkeep
 !storage/state/.gitkeep
-!storage/state/douyin-auth.json
