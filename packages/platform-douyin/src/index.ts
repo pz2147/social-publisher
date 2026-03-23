@@ -86,6 +86,7 @@ export class DouyinAdapter implements PlatformAdapter {
     await context.checkpoint("video:selected", `Attached video ${context.task.videoPath}`);
 
     if (context.task.input.coverImagePath) {
+      await context.checkpoint("cover:start", "Trying to attach cover image");
       const attached = await this.attachCoverImage(page, context.task.input.coverImagePath);
 
       if (attached) {
@@ -100,6 +101,14 @@ export class DouyinAdapter implements PlatformAdapter {
   }
 
   private async fillMetadata(page: Page, context: PublishContext): Promise<void> {
+    await this.captureEditorDiagnostics(page, context);
+
+    await context.checkpoint(
+      "payload:structured",
+      `Structured payload ready: title=${context.task.input.title}, descLength=${context.task.input.description?.length ?? 0}, tags=${(context.task.input.tags ?? []).join(",") || "none"}, mentions=${(context.task.input.mentions ?? []).join(",") || "none"}`
+    );
+
+    await context.checkpoint("title:start", "Trying to submit title to Douyin editor");
     await this.fillTitleField(page, context.task.input.title);
     await context.checkpoint("metadata:title", `Filled title "${context.task.input.title}"`);
 
@@ -112,6 +121,7 @@ export class DouyinAdapter implements PlatformAdapter {
       .join("\n");
 
     if (descriptionText) {
+      await context.checkpoint("description:start", "Trying to submit description to Douyin editor");
       await this.fillDescriptionField(page, descriptionText);
       await context.checkpoint("metadata:description", "Filled description content");
     }
@@ -126,6 +136,7 @@ export class DouyinAdapter implements PlatformAdapter {
     const titlePlaceholder = page.getByText("填写作品标题，为作品获得更多流量", { exact: true }).first();
     if (await titlePlaceholder.count()) {
       await titlePlaceholder.click();
+      await page.waitForTimeout(200);
       await page.keyboard.type(title, { delay: 25 });
       return;
     }
@@ -142,6 +153,7 @@ export class DouyinAdapter implements PlatformAdapter {
       if (await candidate.count()) {
         const tagName = await candidate.evaluate((node) => node.tagName.toLowerCase()).catch(() => "");
         await candidate.click();
+        await page.waitForTimeout(200);
         if (tagName === "input" || tagName === "textarea") {
           await candidate.fill(title);
         } else {
@@ -158,6 +170,7 @@ export class DouyinAdapter implements PlatformAdapter {
     const descriptionPlaceholder = page.getByText("添加作品简介", { exact: true }).first();
     if (await descriptionPlaceholder.count()) {
       await descriptionPlaceholder.click();
+      await page.waitForTimeout(200);
       await page.keyboard.type(description, { delay: 20 });
       return;
     }
@@ -172,6 +185,7 @@ export class DouyinAdapter implements PlatformAdapter {
       if (await candidate.count()) {
         const tagName = await candidate.evaluate((node) => node.tagName.toLowerCase()).catch(() => "");
         await candidate.click();
+        await page.waitForTimeout(200);
         if (tagName === "input" || tagName === "textarea") {
           await candidate.fill(description);
         } else {
@@ -218,5 +232,45 @@ export class DouyinAdapter implements PlatformAdapter {
     }
 
     return false;
+  }
+
+  private async captureEditorDiagnostics(page: Page, context: PublishContext): Promise<void> {
+    const titlePlaceholderCount = await page.getByText("填写作品标题，为作品获得更多流量", { exact: true }).count().catch(() => 0);
+    const descPlaceholderCount = await page.getByText("添加作品简介", { exact: true }).count().catch(() => 0);
+    const contentEditableCount = await page.locator("[contenteditable='true']").count().catch(() => 0);
+    const inputCount = await page.locator("input").count().catch(() => 0);
+    const textareaCount = await page.locator("textarea").count().catch(() => 0);
+    const fileInputCount = await page.locator("input[type='file']").count().catch(() => 0);
+    const snapshot = await page.evaluate(() => {
+      const active = document.activeElement as HTMLElement | null;
+      const editableNodes = Array.from(document.querySelectorAll("[contenteditable='true'], input, textarea"))
+        .slice(0, 12)
+        .map((node) => {
+          const el = node as HTMLElement;
+          return {
+            tag: el.tagName.toLowerCase(),
+            placeholder: el.getAttribute("placeholder") || "",
+            text: (el.textContent || "").trim().slice(0, 60),
+            contenteditable: el.getAttribute("contenteditable") || "",
+            className: (el.getAttribute("class") || "").slice(0, 80)
+          };
+        });
+
+      return {
+        activeTag: active?.tagName?.toLowerCase() || "",
+        activePlaceholder: active?.getAttribute?.("placeholder") || "",
+        activeClassName: active?.getAttribute?.("class") || "",
+        editableNodes
+      };
+    });
+
+    await context.checkpoint(
+      "debug:editors",
+      `titlePlaceholder=${titlePlaceholderCount}, descPlaceholder=${descPlaceholderCount}, contenteditable=${contentEditableCount}, input=${inputCount}, textarea=${textareaCount}, fileInput=${fileInputCount}, activeTag=${snapshot.activeTag || "none"}, activePlaceholder=${snapshot.activePlaceholder || "none"}`
+    );
+    await context.checkpoint(
+      "debug:editable-snapshot",
+      JSON.stringify(snapshot.editableNodes)
+    );
   }
 }

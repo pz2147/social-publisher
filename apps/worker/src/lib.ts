@@ -6,6 +6,9 @@ import { randomUUID } from "node:crypto";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { InMemoryCheckpointStore, createCheckpointLogger } from "@social-publisher/core";
 import { DouyinAdapter } from "@social-publisher/platform-douyin";
+import { WechatChannelsAdapter } from "@social-publisher/platform-wechat-channels";
+import { XiaohongshuAdapter } from "@social-publisher/platform-xiaohongshu";
+import { YoutubeAdapter } from "@social-publisher/platform-youtube";
 import type { PublishResult } from "@social-publisher/core";
 import type { PlatformId, PublishTask, TaskCheckpoint } from "@social-publisher/shared";
 
@@ -42,6 +45,7 @@ export interface WorkerRunOutput {
 }
 
 export interface LoginRunInput {
+  platform?: PlatformId;
   executablePath?: string;
   headless?: boolean;
 }
@@ -51,7 +55,7 @@ export interface ActiveLoginSession {
   browser: Browser;
   context: BrowserContext;
   page: Page;
-  platform: "douyin";
+  platform: PlatformId;
 }
 
 const activeLoginSessions = new Map<string, ActiveLoginSession>();
@@ -61,7 +65,7 @@ export interface ActiveReviewSession {
   browser: Browser;
   context: BrowserContext;
   page: Page;
-  platform: "douyin";
+  platform: PlatformId;
 }
 
 const activeReviewSessions = new Map<string, ActiveReviewSession>();
@@ -89,6 +93,7 @@ export interface StorageStateSummary {
 }
 
 export interface LoginVerificationSummary {
+  platform: PlatformId;
   storageStatePath: string;
   verifiedAt: string;
   isLoggedIn: boolean;
@@ -98,6 +103,7 @@ export interface LoginVerificationSummary {
 }
 
 export interface SessionSaveSummary {
+  platform: PlatformId;
   storageStatePath: string;
   cookieCount: number;
   currentUrl: string;
@@ -123,8 +129,53 @@ export function resolveDefaultExecutablePath(): string {
   return matchedPath ?? preferredPaths[0];
 }
 
-export function resolveDefaultStorageStatePath(): string {
-  return path.join(repoRoot, "storage/state/douyin-auth.json");
+export function resolveDefaultStorageStatePath(platform: PlatformId = "douyin"): string {
+  return path.join(repoRoot, `storage/state/${platform}-auth.json`);
+}
+
+function getPlatformLoginUrl(platform: PlatformId): string {
+  switch (platform) {
+    case "douyin":
+      return "https://creator.douyin.com/creator-micro/content/upload";
+    case "wechat_channels":
+      return "https://channels.weixin.qq.com/platform/post/create";
+    case "xiaohongshu":
+      return "https://creator.xiaohongshu.com/publish/publish";
+    case "youtube":
+      return "https://studio.youtube.com";
+    default:
+      return "https://creator.douyin.com/creator-micro/content/upload";
+  }
+}
+
+function getPlatformLoginSignals(platform: PlatformId) {
+  switch (platform) {
+    case "douyin":
+      return {
+        loggedOutPattern: /扫码登录|手机号登录|验证码登录|登录后即可发布|登录后体验/,
+        loggedInKeywords: ["创作者中心", "发布视频", "上传视频"]
+      };
+    case "wechat_channels":
+      return {
+        loggedOutPattern: /登录|扫码登录|微信扫码/,
+        loggedInKeywords: ["发表视频", "视频号助手", "发表内容"]
+      };
+    case "xiaohongshu":
+      return {
+        loggedOutPattern: /登录|扫码登录|手机登录/,
+        loggedInKeywords: ["发布笔记", "创作中心", "小红书"]
+      };
+    case "youtube":
+      return {
+        loggedOutPattern: /Sign in|登录|Choose your channel/i,
+        loggedInKeywords: ["YouTube Studio", "Create", "Upload videos"]
+      };
+    default:
+      return {
+        loggedOutPattern: /登录/,
+        loggedInKeywords: []
+      };
+  }
 }
 
 function normalizeMarkdown(markdown?: string): string {
@@ -282,15 +333,18 @@ export async function inspectStorageState(
 }
 
 export async function verifyDouyinLogin(input: {
+  platform?: PlatformId;
   storageStatePath?: string;
   executablePath?: string;
   headless?: boolean;
 } = {}): Promise<LoginVerificationSummary> {
-  const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath();
+  const platform = input.platform ?? "douyin";
+  const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath(platform);
   const executablePath = input.executablePath ?? resolveDefaultExecutablePath();
 
   if (!existsSync(storageStatePath)) {
     return {
+      platform,
       storageStatePath,
       verifiedAt: new Date().toISOString(),
       isLoggedIn: false,
@@ -317,7 +371,7 @@ export async function verifyDouyinLogin(input: {
 
   try {
     const page = await context.newPage();
-    await page.goto("https://creator.douyin.com/creator-micro/content/upload", {
+    await page.goto(getPlatformLoginUrl(platform), {
       waitUntil: "domcontentloaded"
     });
     await page.waitForTimeout(2500);
@@ -326,16 +380,16 @@ export async function verifyDouyinLogin(input: {
     const pageTitle = await page.title().catch(() => "");
     const pageText = await page.locator("body").innerText().catch(() => "");
     const hasUploadInput = (await page.locator("input[type='file']").count().catch(() => 0)) > 0;
+    const signals = getPlatformLoginSignals(platform);
     const looksLoggedOut =
-      /扫码登录|手机号登录|验证码登录|登录后即可发布|登录后体验/.test(pageText) ||
+      signals.loggedOutPattern.test(pageText) ||
       /login|passport/i.test(currentUrl);
     const looksLoggedIn =
       hasUploadInput ||
-      pageText.includes("创作者中心") ||
-      pageText.includes("发布视频") ||
-      pageText.includes("上传视频");
+      signals.loggedInKeywords.some((keyword) => pageText.includes(keyword));
 
     return {
+      platform,
       storageStatePath,
       verifiedAt: new Date().toISOString(),
       isLoggedIn: looksLoggedIn && !looksLoggedOut,
@@ -350,6 +404,7 @@ export async function verifyDouyinLogin(input: {
 }
 
 export async function startDouyinLogin(input: LoginRunInput = {}): Promise<{ sessionId: string }> {
+  const platform = input.platform ?? "douyin";
   const executablePath = input.executablePath ?? resolveDefaultExecutablePath();
 
   if (!existsSync(executablePath)) {
@@ -366,7 +421,7 @@ export async function startDouyinLogin(input: LoginRunInput = {}): Promise<{ ses
   const page = await context.newPage();
 
   try {
-    await page.goto("https://creator.douyin.com/creator-micro/content/upload", {
+    await page.goto(getPlatformLoginUrl(platform), {
       waitUntil: "domcontentloaded"
     });
 
@@ -376,7 +431,7 @@ export async function startDouyinLogin(input: LoginRunInput = {}): Promise<{ ses
       browser,
       context,
       page,
-      platform: "douyin"
+      platform
     });
 
     return { sessionId };
@@ -396,7 +451,7 @@ export async function completeDouyinLogin(input: {
     throw new Error("Login session not found. Please click '登录抖音' again.");
   }
 
-  const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath();
+  const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath(session.platform);
 
   try {
     return await saveSessionStorageState(session, storageStatePath);
@@ -408,22 +463,21 @@ export async function completeDouyinLogin(input: {
 }
 
 async function saveSessionStorageState(
-  session: { context: BrowserContext; page: Page },
+  session: { context: BrowserContext; page: Page; platform?: PlatformId },
   storageStatePath: string
 ): Promise<SessionSaveSummary> {
+  const platform = session.platform ?? "douyin";
   const currentUrl = session.page.url();
   const cookies = await session.context.cookies();
   const hasSessionCookie = cookies.some(
     (cookie) => cookie.value && (cookie.expires === -1 || cookie.expires > Date.now() / 1000)
   );
   const pageText = await session.page.locator("body").innerText().catch(() => "");
+  const signals = getPlatformLoginSignals(platform);
   const looksLoggedIn =
     hasSessionCookie &&
-    !/扫码登录|手机号登录|验证码登录|登录后即可发布/.test(pageText) &&
-    (/creator\.douyin\.com/.test(currentUrl) ||
-      pageText.includes("创作者中心") ||
-      pageText.includes("发布视频") ||
-      pageText.includes("上传视频"));
+    !signals.loggedOutPattern.test(pageText) &&
+    (signals.loggedInKeywords.some((keyword) => pageText.includes(keyword)) || /creator|studio|channels|xiaohongshu/i.test(currentUrl));
 
   if (!looksLoggedIn) {
     throw new Error(
@@ -434,6 +488,7 @@ async function saveSessionStorageState(
   await session.context.storageState({ path: storageStatePath });
 
   return {
+    platform,
     storageStatePath,
     cookieCount: cookies.length,
     currentUrl
@@ -449,7 +504,7 @@ export async function saveReviewSessionStorageState(input: {
     throw new Error("Upload review session not found. Please start the upload flow again.");
   }
 
-  const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath();
+  const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath(session.platform);
   return saveSessionStorageState(session, storageStatePath);
 }
 
@@ -460,7 +515,7 @@ export async function runPublishTask(input: WorkerRunInput): Promise<WorkerRunOu
   const parsedMarkdown = parseTaggedMarkdown(markdown);
   const title = input.title ?? parsedMarkdown.title;
   const description = input.description ?? parsedMarkdown.description;
-  const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath();
+  const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath(platform);
   const executablePath = input.executablePath ?? resolveDefaultExecutablePath();
 
   if (platform !== "douyin") {
@@ -511,23 +566,34 @@ export async function runPublishTask(input: WorkerRunInput): Promise<WorkerRunOu
   const checkpoints = new InMemoryCheckpointStore();
   const checkpoint = createCheckpointLogger(checkpoints, task);
 
-  const adapter = new DouyinAdapter({
+  const onReviewSessionReady = async ({ browser, context, page }: { browser: Browser; context: BrowserContext; page: Page }) => {
+    const reviewSessionId = randomUUID();
+    activeReviewSessions.set(reviewSessionId, {
+      id: reviewSessionId,
+      browser,
+      context,
+      page,
+      platform
+    });
+    return reviewSessionId;
+  };
+
+  const commonAdapterOptions = {
     storageStatePath,
     headless: input.headless ?? false,
     executablePath,
     keepBrowserOpenOnReview: true,
-    onReviewSessionReady: async ({ browser, context, page }) => {
-      const reviewSessionId = randomUUID();
-      activeReviewSessions.set(reviewSessionId, {
-        id: reviewSessionId,
-        browser,
-        context,
-        page,
-        platform: "douyin"
-      });
-      return reviewSessionId;
-    }
-  });
+    onReviewSessionReady
+  };
+
+  const adapter =
+    platform === "douyin"
+      ? new DouyinAdapter(commonAdapterOptions)
+      : platform === "wechat_channels"
+        ? new WechatChannelsAdapter(commonAdapterOptions)
+        : platform === "xiaohongshu"
+          ? new XiaohongshuAdapter(commonAdapterOptions)
+          : new YoutubeAdapter(commonAdapterOptions);
 
   const result = await adapter.run({
     task,

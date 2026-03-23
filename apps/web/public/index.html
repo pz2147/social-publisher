@@ -361,19 +361,19 @@
           <h2>发布渠道</h2>
           <button class="channel-button active" type="button" data-platform="douyin">
             抖音
-            <small>当前可用</small>
+            <small>已实现</small>
           </button>
           <button class="channel-button" type="button" data-platform="wechat_channels">
-            微信
-            <small>即将支持</small>
+            微信视频号
+            <small>骨架已接入</small>
           </button>
           <button class="channel-button" type="button" data-platform="xiaohongshu">
             小红书
-            <small>即将支持</small>
+            <small>骨架已接入</small>
           </button>
           <button class="channel-button" type="button" data-platform="youtube">
             YouTube
-            <small>即将支持</small>
+            <small>骨架已接入</small>
           </button>
         </aside>
 
@@ -508,7 +508,7 @@ mentions: @social-publisher</textarea>
 
       const platformLabels = {
         douyin: "抖音",
-        wechat_channels: "微信",
+        wechat_channels: "微信视频号",
         xiaohongshu: "小红书",
         youtube: "YouTube"
       };
@@ -518,6 +518,8 @@ mentions: @social-publisher</textarea>
       function setActivePlatform(platform) {
         platformInput.value = platform;
         formTitle.textContent = `上传任务 · ${platformLabels[platform] || platform}`;
+        loginButton.textContent = `登录${platformLabels[platform] || platform}`;
+        verifyLoginButton.textContent = `检查${platformLabels[platform] || platform}登录状态`;
         channelButtons.forEach((button) => {
           button.classList.toggle("active", button.dataset.platform === platform);
         });
@@ -527,7 +529,7 @@ mentions: @social-publisher</textarea>
         const response = await fetch("/api/defaults");
         const data = await response.json();
         executablePathInput.value = data.executablePath;
-        storageStatePathInput.value = data.storageStatePath;
+        storageStatePathInput.value = `/Users/zmjun/Documents/codex/upload-video/social-publisher/storage/state/${platformInput.value}-auth.json`;
         if (!markdownInput.value.trim()) {
           markdownInput.value = `title: Figure 03 上新演示
 
@@ -540,10 +542,10 @@ tags: #机器人 #AI #Figure03
 mentions: @social-publisher`;
         }
         const platformMeta = (data.platforms || [])
-          .map((platform) => `${platform.label}: ${platform.status === "available" ? "可用" : "即将支持"}`)
+          .map((platform) => `${platform.label}: ${platform.status === "implemented" ? "已实现" : "骨架已接入"}`)
           .join("\n");
         summaryNode.textContent = `当前渠道支持情况：\n${platformMeta}`;
-        renderSession(data.session);
+        await refreshSession();
       }
 
       function renderSession(session) {
@@ -592,7 +594,7 @@ mentions: @social-publisher`;
       async function refreshSession() {
         try {
           const storageStatePath = storageStatePathInput.value.trim();
-          const response = await fetch(`/api/session?storageStatePath=${encodeURIComponent(storageStatePath)}`);
+          const response = await fetch(`/api/session?platform=${encodeURIComponent(platformInput.value)}&storageStatePath=${encodeURIComponent(storageStatePath)}`);
           const data = await response.json();
           renderSession(data);
         } catch (error) {
@@ -610,7 +612,7 @@ mentions: @social-publisher`;
           const storageStatePath = storageStatePathInput.value.trim();
           const executablePath = executablePathInput.value.trim();
           const response = await fetch(
-            `/api/login-status?storageStatePath=${encodeURIComponent(storageStatePath)}&executablePath=${encodeURIComponent(executablePath)}`
+            `/api/login-status?platform=${encodeURIComponent(platformInput.value)}&storageStatePath=${encodeURIComponent(storageStatePath)}&executablePath=${encodeURIComponent(executablePath)}`
           );
           const data = await response.json();
 
@@ -679,17 +681,12 @@ mentions: @social-publisher`;
       channelButtons.forEach((button) => {
         button.addEventListener("click", () => {
           setActivePlatform(button.dataset.platform);
+          storageStatePathInput.value = `/Users/zmjun/Documents/codex/upload-video/social-publisher/storage/state/${button.dataset.platform}-auth.json`;
+          refreshSession().catch(() => {});
         });
       });
 
       loginButton.addEventListener("click", async () => {
-        if (platformInput.value !== "douyin") {
-          statusNode.className = "status error";
-          statusNode.textContent = "当前只支持抖音登录";
-          summaryNode.textContent = "请先在左侧选择抖音，再点击登录。";
-          return;
-        }
-
         loginButton.disabled = true;
         submitButton.disabled = true;
         saveLoginButton.disabled = true;
@@ -705,6 +702,7 @@ mentions: @social-publisher`;
               "content-type": "application/json"
             },
             body: JSON.stringify({
+              platform: platformInput.value,
               executablePath: executablePathInput.value.trim()
             })
           });

@@ -107,7 +107,7 @@ const server = createServer(async (request, response) => {
         videoPath,
         coverImagePath,
         markdown: form.get("markdown")?.toString() ?? "",
-        storageStatePath: form.get("storageStatePath")?.toString() || resolveDefaultStorageStatePath(),
+        storageStatePath: form.get("storageStatePath")?.toString() || resolveDefaultStorageStatePath(platform),
         executablePath: form.get("executablePath")?.toString() || resolveDefaultExecutablePath(),
         headless: false
       });
@@ -120,11 +120,13 @@ const server = createServer(async (request, response) => {
       const rawBody = await readBody(request);
       const body = rawBody
         ? (JSON.parse(rawBody) as {
+            platform?: "douyin" | "wechat_channels" | "xiaohongshu" | "youtube";
             executablePath?: string;
           })
         : {};
 
       const output = await startDouyinLogin({
+        platform: body.platform ?? "douyin",
         executablePath: body.executablePath || resolveDefaultExecutablePath(),
         headless: false
       });
@@ -176,18 +178,14 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && request.url === "/api/defaults") {
-      const storageStatePath = resolveDefaultStorageStatePath();
-      const session = await inspectStorageState(storageStatePath);
       sendJson(response, 200, {
         platforms: [
-          { id: "douyin", label: "抖音", status: "available" },
-          { id: "wechat_channels", label: "微信", status: "coming_soon" },
-          { id: "xiaohongshu", label: "小红书", status: "coming_soon" },
-          { id: "youtube", label: "YouTube", status: "coming_soon" }
+          { id: "douyin", label: "抖音", status: "implemented" },
+          { id: "wechat_channels", label: "微信视频号", status: "scaffold" },
+          { id: "xiaohongshu", label: "小红书", status: "scaffold" },
+          { id: "youtube", label: "YouTube", status: "scaffold" }
         ],
         executablePath: resolveDefaultExecutablePath(),
-        storageStatePath,
-        session,
         port
       });
       return;
@@ -195,7 +193,8 @@ const server = createServer(async (request, response) => {
 
     if (request.method === "GET" && request.url?.startsWith("/api/session")) {
       const requestUrl = new URL(request.url, `http://${host}:${port}`);
-      const storageStatePath = requestUrl.searchParams.get("storageStatePath") || resolveDefaultStorageStatePath();
+      const platform = (requestUrl.searchParams.get("platform") as "douyin" | "wechat_channels" | "xiaohongshu" | "youtube" | null) ?? "douyin";
+      const storageStatePath = requestUrl.searchParams.get("storageStatePath") || resolveDefaultStorageStatePath(platform);
       const session = await inspectStorageState(storageStatePath);
       sendJson(response, 200, session);
       return;
@@ -203,9 +202,11 @@ const server = createServer(async (request, response) => {
 
     if (request.method === "GET" && request.url?.startsWith("/api/login-status")) {
       const requestUrl = new URL(request.url, `http://${host}:${port}`);
-      const storageStatePath = requestUrl.searchParams.get("storageStatePath") || resolveDefaultStorageStatePath();
+      const platform = (requestUrl.searchParams.get("platform") as "douyin" | "wechat_channels" | "xiaohongshu" | "youtube" | null) ?? "douyin";
+      const storageStatePath = requestUrl.searchParams.get("storageStatePath") || resolveDefaultStorageStatePath(platform);
       const executablePath = requestUrl.searchParams.get("executablePath") || resolveDefaultExecutablePath();
       const verification = await verifyDouyinLogin({
+        platform,
         storageStatePath,
         executablePath,
         headless: true

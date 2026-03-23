@@ -17,6 +17,9 @@
   "dependencies": {
     "@social-publisher/core": "0.1.0",
     "@social-publisher/platform-douyin": "0.1.0",
+    "@social-publisher/platform-wechat-channels": "0.1.0",
+    "@social-publisher/platform-xiaohongshu": "0.1.0",
+    "@social-publisher/platform-youtube": "0.1.0",
     "@social-publisher/shared": "0.1.0"
   }
 }

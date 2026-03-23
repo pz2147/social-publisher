@@ -11,7 +11,13 @@ async function main() {
       "douyin",
     videoPath: process.env.PUBLISH_VIDEO_PATH ?? "",
     title: process.env.PUBLISH_TITLE,
-    storageStatePath: process.env.DOUYIN_STORAGE_STATE_PATH ?? resolveDefaultStorageStatePath(),
+    storageStatePath:
+      process.env.PLATFORM_STORAGE_STATE_PATH ??
+      process.env.DOUYIN_STORAGE_STATE_PATH ??
+      resolveDefaultStorageStatePath(
+        (process.env.PUBLISH_PLATFORM as "douyin" | "wechat_channels" | "xiaohongshu" | "youtube" | undefined) ??
+          "douyin"
+      ),
     executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH ?? resolveDefaultExecutablePath(),
     headless: false
   });
