@@ -1,6 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
+import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import {
   completeDouyinLogin,
@@ -18,6 +21,7 @@ const __dirname = path.dirname(__filename);
 const publicDir = path.join(__dirname, "../public");
 const port = Number(process.env.PORT ?? 3100);
 const host = process.env.HOST ?? "127.0.0.1";
+const uploadsDir = path.join(__dirname, "../../../storage/uploads");
 
 async function readBody(request: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
@@ -32,10 +36,48 @@ function sendJson(response: ServerResponse, statusCode: number, body: unknown): 
   response.end(JSON.stringify(body, null, 2));
 }
 
+function openPathInFinder(targetPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile("open", [targetPath], (error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
 async function serveStatic(response: ServerResponse): Promise<void> {
   const html = await readFile(path.join(publicDir, "index.html"), "utf8");
   response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   response.end(html);
+}
+
+async function parseMultipartForm(request: IncomingMessage): Promise<FormData> {
+  const url = `http://${host}:${port}${request.url ?? "/"}`;
+  const webRequest = new Request(url, {
+    method: request.method,
+    headers: request.headers as HeadersInit,
+    body: Readable.toWeb(request) as ReadableStream,
+    duplex: "half"
+  } as RequestInit & { duplex: "half" });
+
+  return webRequest.formData();
+}
+
+function sanitizeFilename(name: string): string {
+  return name.replace(/[^\w.\-()\u4e00-\u9fa5]+/g, "_");
+}
+
+async function persistUploadedFile(file: File, prefix: string): Promise<string> {
+  await mkdir(uploadsDir, { recursive: true });
+  const extension = path.extname(file.name || "") || ".bin";
+  const baseName = sanitizeFilename(path.basename(file.name || `${prefix}${extension}`, extension));
+  const targetPath = path.join(uploadsDir, `${prefix}-${baseName}-${randomUUID()}${extension}`);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(targetPath, buffer);
+  return targetPath;
 }
 
 const server = createServer(async (request, response) => {
@@ -46,52 +88,28 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "POST" && request.url === "/api/run") {
-      const rawBody = await readBody(request);
-      const body = JSON.parse(rawBody) as {
-        platform?: "douyin" | "wechat_channels" | "xiaohongshu" | "youtube";
-        videoPath?: string;
-        title?: string;
-        description?: string;
-        tags?: string[];
-        mentions?: string[];
-        location?: string;
-        visibility?: "public" | "private" | "friends";
-        coverMode?: "auto" | "custom";
-        declareOriginal?: boolean;
-        allowComments?: boolean;
-        allowDuet?: boolean;
-        allowStitch?: boolean;
-        allowDownload?: boolean;
-        scheduledAt?: string;
-        storageStatePath?: string;
-        executablePath?: string;
-        headless?: boolean;
-      };
+      const form = await parseMultipartForm(request);
+      const platform = (form.get("platform")?.toString() as "douyin" | "wechat_channels" | "xiaohongshu" | "youtube" | null) ?? "douyin";
+      const videoFile = form.get("videoFile");
+      const coverFile = form.get("coverFile");
 
-      if (!body.videoPath) {
-        sendJson(response, 400, { error: "videoPath is required" });
+      if (!(videoFile instanceof File) || videoFile.size === 0) {
+        sendJson(response, 400, { error: "videoFile is required" });
         return;
       }
 
+      const videoPath = await persistUploadedFile(videoFile, "video");
+      const coverImagePath =
+        coverFile instanceof File && coverFile.size > 0 ? await persistUploadedFile(coverFile, "cover") : undefined;
+
       const output = await runPublishTask({
-        platform: body.platform ?? "douyin",
-        videoPath: body.videoPath,
-        title: body.title,
-        description: body.description,
-        tags: body.tags,
-        mentions: body.mentions,
-        location: body.location,
-        visibility: body.visibility,
-        coverMode: body.coverMode,
-        declareOriginal: body.declareOriginal,
-        allowComments: body.allowComments,
-        allowDuet: body.allowDuet,
-        allowStitch: body.allowStitch,
-        allowDownload: body.allowDownload,
-        scheduledAt: body.scheduledAt,
-        storageStatePath: body.storageStatePath || resolveDefaultStorageStatePath(),
-        executablePath: body.executablePath || resolveDefaultExecutablePath(),
-        headless: body.headless ?? false
+        platform,
+        videoPath,
+        coverImagePath,
+        markdown: form.get("markdown")?.toString() ?? "",
+        storageStatePath: form.get("storageStatePath")?.toString() || resolveDefaultStorageStatePath(),
+        executablePath: form.get("executablePath")?.toString() || resolveDefaultExecutablePath(),
+        headless: false
       });
 
       sendJson(response, 200, output);
@@ -193,6 +211,22 @@ const server = createServer(async (request, response) => {
         headless: true
       });
       sendJson(response, 200, verification);
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/api/open-folder") {
+      const rawBody = await readBody(request);
+      const body = JSON.parse(rawBody) as {
+        targetPath?: string;
+      };
+
+      if (!body.targetPath) {
+        sendJson(response, 400, { error: "targetPath is required" });
+        return;
+      }
+
+      await openPathInFinder(path.dirname(body.targetPath));
+      sendJson(response, 200, { ok: true });
       return;
     }
 

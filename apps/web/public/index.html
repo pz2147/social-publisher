@@ -33,7 +33,7 @@
       }
 
       .shell {
-        width: min(1080px, calc(100% - 32px));
+        width: min(1380px, calc(100% - 32px));
         margin: 32px auto;
         padding: 28px;
         border: 1px solid var(--line);
@@ -66,7 +66,7 @@
 
       .workspace {
         display: grid;
-        grid-template-columns: 1.1fr 0.9fr;
+        grid-template-columns: 1fr;
         gap: 20px;
       }
 
@@ -142,28 +142,6 @@
         gap: 12px;
       }
 
-      .toggle-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .toggle {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        padding: 12px 14px;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.84);
-        color: var(--ink);
-      }
-
-      .toggle input {
-        width: auto;
-        margin: 0;
-      }
-
       label {
         display: grid;
         gap: 8px;
@@ -186,6 +164,10 @@
       textarea {
         min-height: 100px;
         resize: vertical;
+      }
+
+      .markdown-editor {
+        min-height: 320px;
       }
 
       button {
@@ -305,6 +287,52 @@
         flex-wrap: wrap;
       }
 
+      .session-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .input-with-icon {
+        position: relative;
+      }
+
+      .input-with-icon input {
+        padding-right: 48px;
+      }
+
+      .icon-button {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        line-height: 1;
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--muted);
+        border: 1px solid var(--line);
+        box-shadow: none;
+      }
+
+      .icon-button svg {
+        width: 16px;
+        height: 16px;
+        stroke: currentColor;
+      }
+
+      .icon-button:hover {
+        color: var(--ink);
+        border-color: rgba(31, 29, 26, 0.2);
+      }
+
       @media (max-width: 860px) {
         .grid {
           grid-template-columns: 1fr;
@@ -315,7 +343,6 @@
         }
 
         .two-col,
-        .toggle-grid,
         .session-grid {
           grid-template-columns: 1fr;
         }
@@ -356,84 +383,64 @@
             <form id="run-form">
               <input id="platform" name="platform" type="hidden" value="douyin" />
               <div class="form-section">
-                <h3>内容</h3>
-                <div class="section-hint">尽量按抖音发布页习惯填写，标题、描述、话题和 @ 单独拆开。</div>
+                <h3>媒体</h3>
+                <div class="section-hint">直接选择视频和封面文件，上传时会先保存到本地临时目录再交给 Playwright。</div>
                 <label>
-                  视频路径
-                  <input id="videoPath" name="videoPath" placeholder="/Users/you/Desktop/video.mp4" required />
+                  视频文件
+                  <input id="videoFile" name="videoFile" type="file" accept="video/*" required />
                 </label>
                 <label>
-                  标题
-                  <input id="title" name="title" maxlength="55" placeholder="输入标题，建议简短有力" />
+                  封面文件
+                  <input id="coverFile" name="coverFile" type="file" accept="image/*" />
                 </label>
-                <label>
-                  描述
-                  <textarea id="description" name="description" placeholder="补充剧情、卖点、CTA"></textarea>
-                </label>
-                <div class="two-col">
-                  <label>
-                    话题标签
-                    <input id="tags" name="tags" placeholder="AI, 机器人, Figure03" />
-                  </label>
-                  <label>
-                    @账号
-                    <input id="mentions" name="mentions" placeholder="@friend, @brand" />
-                  </label>
-                </div>
-                <div class="two-col">
-                  <label>
-                    位置
-                    <input id="location" name="location" placeholder="上海 / 北京 / 留空" />
-                  </label>
-                  <label>
-                    定时发布时间
-                    <input id="scheduledAt" name="scheduledAt" type="datetime-local" />
-                  </label>
-                </div>
               </div>
 
               <div class="form-section">
-                <h3>发布设置</h3>
-                <div class="two-col">
-                  <label>
-                    可见范围
-                    <select id="visibility" name="visibility">
-                      <option value="public">公开</option>
-                      <option value="friends">好友可见</option>
-                      <option value="private">仅自己可见</option>
-                    </select>
-                  </label>
-                  <label>
-                    封面方式
-                    <select id="coverMode" name="coverMode">
-                      <option value="auto">自动选封面</option>
-                      <option value="custom">人工调整封面</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
+                <h3>内容 Markdown</h3>
+                <div class="section-hint">使用显式标记区分字段，避免标题和简介混在一起。支持 `title:`、`desc:`、`tags:`、`mentions:`。</div>
+                <label>
+                  Markdown 内容
+                  <textarea class="markdown-editor" id="markdown" name="markdown" placeholder="title: Figure 03 上新演示&#10;&#10;desc:&#10;这里写作品简介。&#10;可以多行。&#10;&#10;tags: #机器人 #AI #Figure03&#10;mentions: @social-publisher">title: Figure 03 上新演示
 
-              <div class="form-section">
-                <h3>互动权限</h3>
-                <div class="toggle-grid">
-                  <label class="toggle"><input id="allowComments" type="checkbox" checked /> 允许评论</label>
-                  <label class="toggle"><input id="allowDuet" type="checkbox" checked /> 允许合拍</label>
-                  <label class="toggle"><input id="allowStitch" type="checkbox" checked /> 允许共创/拼接</label>
-                  <label class="toggle"><input id="allowDownload" type="checkbox" /> 允许下载</label>
-                  <label class="toggle"><input id="declareOriginal" type="checkbox" /> 声明原创</label>
-                </div>
+desc:
+这是默认测试文案。
+用这一段验证上传流程是否正常。
+这里的内容会进入作品简介，而不会再塞进标题。
+
+tags: #机器人 #AI #Figure03
+mentions: @social-publisher</textarea>
+                </label>
               </div>
 
               <div class="form-section">
                 <h3>运行环境</h3>
-                <label>
-                  浏览器路径
-                  <input id="executablePath" name="executablePath" />
-                </label>
-                <label>
-                  登录态路径
-                  <input id="storageStatePath" name="storageStatePath" />
-                </label>
+                <div class="section-hint">如果你不改，默认会优先用本机正式版 Chrome。</div>
+                <div class="two-col">
+                  <label>
+                    浏览器路径
+                    <div class="input-with-icon">
+                      <input id="executablePath" name="executablePath" />
+                      <button id="openBrowserFolderButton" class="icon-button" type="button" title="打开文件夹" aria-label="打开浏览器路径所在文件夹">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M3.75 7.5h4.5l1.5 2.25h10.5v6.75a2.25 2.25 0 0 1-2.25 2.25H5.999A2.249 2.249 0 0 1 3.75 16.5V7.5Z" stroke-width="1.7" stroke-linejoin="round"></path>
+                          <path d="M3.75 9.75V6.75A2.25 2.25 0 0 1 6 4.5h2.568a2.25 2.25 0 0 1 1.591.659l.841.841H18A2.25 2.25 0 0 1 20.25 8.25v1.5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </label>
+                  <div class="input-with-icon">
+                    <label>
+                      登录态路径
+                      <input id="storageStatePath" name="storageStatePath" />
+                    </label>
+                    <button id="openSessionFolderButton" class="icon-button" type="button" title="打开文件夹" aria-label="打开登录态路径所在文件夹">
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M3.75 7.5h4.5l1.5 2.25h10.5v6.75a2.25 2.25 0 0 1-2.25 2.25H5.999A2.249 2.249 0 0 1 3.75 16.5V7.5Z" stroke-width="1.7" stroke-linejoin="round"></path>
+                        <path d="M3.75 9.75V6.75A2.25 2.25 0 0 1 6 4.5h2.568a2.25 2.25 0 0 1 1.591.659l.841.841H18A2.25 2.25 0 0 1 20.25 8.25v1.5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
               <div class="actions">
                 <button id="loginButton" type="button">登录抖音</button>
@@ -444,13 +451,6 @@
             </form>
           </div>
 
-          <div class="card">
-            <h2>运行状态</h2>
-            <div class="meta">
-              <div id="status" class="status">等待输入任务参数。</div>
-              <pre id="summary">尚未执行。</pre>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -458,6 +458,14 @@
         <h2>执行检查点</h2>
         <div id="checkpoints" class="checkpoints">
           <div class="checkpoint">运行后会在这里展示每一步的执行记录。</div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top: 20px;">
+        <h2>运行状态</h2>
+        <div class="meta">
+          <div id="status" class="status">等待输入任务参数。</div>
+          <pre id="summary">尚未执行。</pre>
         </div>
       </section>
 
@@ -484,19 +492,9 @@
       const saveUploadSessionButton = document.getElementById("saveUploadSessionButton");
       const formTitle = document.getElementById("formTitle");
       const platformInput = document.getElementById("platform");
-      const titleInput = document.getElementById("title");
-      const descriptionInput = document.getElementById("description");
-      const tagsInput = document.getElementById("tags");
-      const mentionsInput = document.getElementById("mentions");
-      const locationInput = document.getElementById("location");
-      const scheduledAtInput = document.getElementById("scheduledAt");
-      const visibilityInput = document.getElementById("visibility");
-      const coverModeInput = document.getElementById("coverMode");
-      const allowCommentsInput = document.getElementById("allowComments");
-      const allowDuetInput = document.getElementById("allowDuet");
-      const allowStitchInput = document.getElementById("allowStitch");
-      const allowDownloadInput = document.getElementById("allowDownload");
-      const declareOriginalInput = document.getElementById("declareOriginal");
+      const videoFileInput = document.getElementById("videoFile");
+      const coverFileInput = document.getElementById("coverFile");
+      const markdownInput = document.getElementById("markdown");
       const executablePathInput = document.getElementById("executablePath");
       const storageStatePathInput = document.getElementById("storageStatePath");
       const channelButtons = Array.from(document.querySelectorAll(".channel-button"));
@@ -505,6 +503,8 @@
       const cookieListNode = document.getElementById("cookieList");
       const verifyLoginButton = document.getElementById("verifyLoginButton");
       const loginVerificationNode = document.getElementById("loginVerification");
+      const openSessionFolderButton = document.getElementById("openSessionFolderButton");
+      const openBrowserFolderButton = document.getElementById("openBrowserFolderButton");
 
       const platformLabels = {
         douyin: "抖音",
@@ -528,6 +528,17 @@
         const data = await response.json();
         executablePathInput.value = data.executablePath;
         storageStatePathInput.value = data.storageStatePath;
+        if (!markdownInput.value.trim()) {
+          markdownInput.value = `title: Figure 03 上新演示
+
+desc:
+这是默认测试文案。
+用这一段验证上传流程是否正常。
+这里的内容会进入作品简介，而不会再塞进标题。
+
+tags: #机器人 #AI #Figure03
+mentions: @social-publisher`;
+        }
         const platformMeta = (data.platforms || [])
           .map((platform) => `${platform.label}: ${platform.status === "available" ? "可用" : "即将支持"}`)
           .join("\n");
@@ -798,43 +809,29 @@
         saveUploadSessionButton.disabled = true;
         statusNode.className = "status";
         statusNode.textContent = "任务执行中，浏览器会在本机打开。";
-        summaryNode.textContent = "正在调用 Playwright...";
+        summaryNode.textContent = "正在上传文件并调用 Playwright...";
         checkpointsNode.innerHTML = '<div class="checkpoint">任务开始执行，请稍候。</div>';
+        const formData = new FormData();
+        const videoFile = videoFileInput.files[0];
+        const coverFile = coverFileInput.files[0];
 
-        const payload = {
-          platform: platformInput.value,
-          videoPath: document.getElementById("videoPath").value.trim(),
-          title: titleInput.value.trim(),
-          description: descriptionInput.value.trim(),
-          tags: tagsInput.value
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-          mentions: mentionsInput.value
-            .split(",")
-            .map((item) => item.trim().replace(/^@/, ""))
-            .filter(Boolean),
-          location: locationInput.value.trim(),
-          scheduledAt: scheduledAtInput.value || undefined,
-          visibility: visibilityInput.value,
-          coverMode: coverModeInput.value,
-          allowComments: allowCommentsInput.checked,
-          allowDuet: allowDuetInput.checked,
-          allowStitch: allowStitchInput.checked,
-          allowDownload: allowDownloadInput.checked,
-          declareOriginal: declareOriginalInput.checked,
-          executablePath: executablePathInput.value.trim(),
-          storageStatePath: storageStatePathInput.value.trim(),
-          headless: false
-        };
+        if (!videoFile) {
+          throw new Error("请先选择一个视频文件。");
+        }
+
+        formData.set("platform", platformInput.value);
+        formData.set("videoFile", videoFile);
+        if (coverFile) {
+          formData.set("coverFile", coverFile);
+        }
+        formData.set("markdown", markdownInput.value.trim());
+        formData.set("executablePath", executablePathInput.value.trim());
+        formData.set("storageStatePath", storageStatePathInput.value.trim());
 
         try {
           const response = await fetch("/api/run", {
             method: "POST",
-            headers: {
-              "content-type": "application/json"
-            },
-            body: JSON.stringify(payload)
+            body: formData
           });
 
           const data = await response.json();
@@ -871,6 +868,54 @@
 
       verifyLoginButton.addEventListener("click", () => {
         verifyLoginStatus().catch(() => {});
+      });
+      openSessionFolderButton.addEventListener("click", async () => {
+        try {
+          const response = await fetch("/api/open-folder", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({
+              targetPath: storageStatePathInput.value.trim()
+            })
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "打开文件夹失败");
+          }
+
+          loginVerificationNode.className = "status success";
+          loginVerificationNode.textContent = "已打开登录态所在文件夹";
+        } catch (error) {
+          loginVerificationNode.className = "status error";
+          loginVerificationNode.textContent = error.message || String(error);
+        }
+      });
+      openBrowserFolderButton.addEventListener("click", async () => {
+        try {
+          const response = await fetch("/api/open-folder", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({
+              targetPath: executablePathInput.value.trim()
+            })
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "打开文件夹失败");
+          }
+
+          loginVerificationNode.className = "status success";
+          loginVerificationNode.textContent = "已打开浏览器路径所在文件夹";
+        } catch (error) {
+          loginVerificationNode.className = "status error";
+          loginVerificationNode.textContent = error.message || String(error);
+        }
       });
       saveUploadSessionButton.addEventListener("click", () => {
         saveUploadSessionState().catch(() => {});

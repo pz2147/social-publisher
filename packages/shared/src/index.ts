@@ -9,11 +9,13 @@ export type PublishStatus =
 
 export interface PublishInput {
   title: string;
+  markdown?: string;
   description?: string;
   tags?: string[];
   mentions?: string[];
   location?: string;
   scheduledAt?: string;
+  coverImagePath?: string;
   visibility?: "public" | "private" | "friends";
   coverMode?: "auto" | "custom";
   declareOriginal?: boolean;

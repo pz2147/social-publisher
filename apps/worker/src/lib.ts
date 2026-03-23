@@ -16,6 +16,8 @@ const repoRoot = path.resolve(__dirname, "../../..");
 export interface WorkerRunInput {
   platform?: PlatformId;
   videoPath: string;
+  coverImagePath?: string;
+  markdown?: string;
   title?: string;
   description?: string;
   tags?: string[];
@@ -123,6 +125,78 @@ export function resolveDefaultExecutablePath(): string {
 
 export function resolveDefaultStorageStatePath(): string {
   return path.join(repoRoot, "storage/state/douyin-auth.json");
+}
+
+function normalizeMarkdown(markdown?: string): string {
+  return (markdown ?? "").trim();
+}
+
+interface ParsedMarkdownFields {
+  title: string;
+  description: string;
+  tags: string[];
+  mentions: string[];
+}
+
+function parseTaggedMarkdown(markdown?: string, fallbackTitle: string = "Playwright 上传流程演示"): ParsedMarkdownFields {
+  const normalized = normalizeMarkdown(markdown);
+  if (!normalized) {
+    return {
+      title: fallbackTitle,
+      description: "",
+      tags: [],
+      mentions: []
+    };
+  }
+
+  const lines = normalized.split(/\r?\n/);
+  const fields: Record<string, string[]> = {
+    title: [],
+    desc: [],
+    tags: [],
+    mentions: []
+  };
+  let currentField: "title" | "desc" | "tags" | "mentions" | null = null;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const fieldMatch = line.match(/^(title|desc|tags|mentions)\s*:\s*(.*)$/i);
+
+    if (fieldMatch) {
+      currentField = fieldMatch[1].toLowerCase() as "title" | "desc" | "tags" | "mentions";
+      const initialValue = fieldMatch[2].trim();
+      if (initialValue) {
+        fields[currentField].push(initialValue);
+      }
+      continue;
+    }
+
+    if (currentField) {
+      fields[currentField].push(line);
+    }
+  }
+
+  const title = fields.title.join(" ").trim() || fallbackTitle;
+  const description = fields.desc.join("\n").trim();
+  const tags = fields.tags
+    .join(" ")
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => (item.startsWith("#") ? item.slice(1) : item));
+  const mentions = fields.mentions
+    .join(" ")
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => (item.startsWith("@") ? item.slice(1) : item));
+
+  return {
+    title: title.slice(0, 55),
+    description,
+    tags,
+    mentions
+  };
 }
 
 function formatDurationFromNow(targetEpochSeconds: number): string {
@@ -382,7 +456,10 @@ export async function saveReviewSessionStorageState(input: {
 export async function runPublishTask(input: WorkerRunInput): Promise<WorkerRunOutput> {
   const platform = input.platform ?? "douyin";
   const videoPath = input.videoPath;
-  const title = input.title ?? "Playwright 上传流程演示";
+  const markdown = normalizeMarkdown(input.markdown);
+  const parsedMarkdown = parseTaggedMarkdown(markdown);
+  const title = input.title ?? parsedMarkdown.title;
+  const description = input.description ?? parsedMarkdown.description;
   const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath();
   const executablePath = input.executablePath ?? resolveDefaultExecutablePath();
 
@@ -411,10 +488,12 @@ export async function runPublishTask(input: WorkerRunInput): Promise<WorkerRunOu
     videoPath,
     input: {
       title,
-      description: input.description,
-      tags: input.tags ?? [],
-      mentions: input.mentions ?? [],
+      markdown,
+      description,
+      tags: input.tags ?? parsedMarkdown.tags,
+      mentions: input.mentions ?? parsedMarkdown.mentions,
       location: input.location,
+      coverImagePath: input.coverImagePath,
       visibility: input.visibility ?? "public",
       coverMode: input.coverMode ?? "auto",
       declareOriginal: input.declareOriginal ?? false,
