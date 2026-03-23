@@ -518,9 +518,9 @@ export async function runPublishTask(input: WorkerRunInput): Promise<WorkerRunOu
   const storageStatePath = input.storageStatePath ?? resolveDefaultStorageStatePath(platform);
   const executablePath = input.executablePath ?? resolveDefaultExecutablePath();
 
-  if (platform !== "douyin") {
+  if (platform !== "douyin" && platform !== "xiaohongshu" && platform !== "youtube" && platform !== "wechat_channels") {
     throw new Error(
-      `Platform "${platform}" is not implemented yet. Available now: douyin. Coming next: wechat_channels, xiaohongshu, youtube.`
+      `Platform "${platform}" is not implemented yet. Available now: douyin, wechat_channels, xiaohongshu, youtube.`
     );
   }
 
@@ -591,9 +591,9 @@ export async function runPublishTask(input: WorkerRunInput): Promise<WorkerRunOu
       ? new DouyinAdapter(commonAdapterOptions)
       : platform === "wechat_channels"
         ? new WechatChannelsAdapter(commonAdapterOptions)
-        : platform === "xiaohongshu"
-          ? new XiaohongshuAdapter(commonAdapterOptions)
-          : new YoutubeAdapter(commonAdapterOptions);
+      : platform === "xiaohongshu"
+        ? new XiaohongshuAdapter(commonAdapterOptions)
+        : new YoutubeAdapter(commonAdapterOptions);
 
   const result = await adapter.run({
     task,

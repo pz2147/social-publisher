@@ -181,9 +181,9 @@ const server = createServer(async (request, response) => {
       sendJson(response, 200, {
         platforms: [
           { id: "douyin", label: "抖音", status: "implemented" },
-          { id: "wechat_channels", label: "微信视频号", status: "scaffold" },
-          { id: "xiaohongshu", label: "小红书", status: "scaffold" },
-          { id: "youtube", label: "YouTube", status: "scaffold" }
+          { id: "wechat_channels", label: "微信视频号", status: "implemented" },
+          { id: "xiaohongshu", label: "小红书", status: "implemented" },
+          { id: "youtube", label: "YouTube", status: "implemented" }
         ],
         executablePath: resolveDefaultExecutablePath(),
         port
